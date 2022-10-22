@@ -1,0 +1,31 @@
+steps:
+  - id: "build-image-airflow"
+    name: "gcr.io/cloud-builders/gcloud"
+    entrypoint: "bash"
+    args:
+    - "-c"
+    - |
+      gcloud builds submit ${_PACKAGE_PATH}/builds/ --config=${_PACKAGE_PATH}/builds/airflow-cloudbuild.yaml
+
+  - id: "install-requirements-airflow"
+    name: "gcr.io/$PROJECT_ID/airflow"
+    waitFor: ["build-image-airflow"]
+    entrypoint: "bash"
+    args:
+    - "-c"
+    - |
+      pip install -r ${_PACKAGE_PATH}/requirements.txt
+
+  - id: "test-dag-integrity"
+    name: "gcr.io/$PROJECT_ID/airflow"
+    waitFor: ["install-requirements-airflow"]
+    entrypoint: "python"
+    env:
+    - AIRFLOW__CORE__DAGS_FOLDER=${_PACKAGE_PATH}
+    args:
+    - "-m"
+    - uniitest
+    - ${_PACKAGE_PATH}/tests/dag-integrity.py
+
+substitutions:
+  _PACKAGE_PATH: src
